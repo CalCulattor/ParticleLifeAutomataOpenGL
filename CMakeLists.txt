@@ -17,6 +17,8 @@ FetchContent_MakeAvailable(glfw)
 
 add_executable(OpenGLProject
     src/main.cpp
+    src/Particle.cpp
+    src/ParticleSystem.cpp
     external/glad/src/gl.c
 )
 
