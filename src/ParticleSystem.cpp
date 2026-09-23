@@ -1,13 +1,27 @@
 #include <cmath>
 #include <bit>
+#include <algorithm>
+#include <iostream>
 
 #include "ParticleSystem.h"
 
+ParticleSystem::ParticleSystem() {
+    types_count = 0;
+}
+
 ParticleSystem::~ParticleSystem(){
     delete grid;
+    delete[] f_Interactions;
 }
 
 void ParticleSystem::postSpawnCleanup() {
+    f_Interactions = new float[types_count * types_count]{};
+    for (int i = 0; i < types_count * types_count; i++) {
+        f_Interactions[i] = 1;
+    }
+    for (const auto& [key, value] : m_Interactions) {
+        f_Interactions[key.first * types_count + key.second] = value;
+    }
     particle_count = m_Particles.size();
     grid = new std::array<std::vector<Particle*>, grid_number>;
     for (int i = 0; i < particle_count; i++) {
@@ -17,8 +31,27 @@ void ParticleSystem::postSpawnCleanup() {
     }
 }
 
-void ParticleSystem::spawn(const float new_x, const float new_y) {
-    m_Particles.push_back(Particle(new_x, new_y));
+void ParticleSystem::spawn(const float n_x, const float n_y, const int n_type) {
+    if (!(std::find(m_Types_id.begin(), m_Types_id.end(), n_type) != m_Types_id.end())) {
+        m_Types_id.push_back(n_type);
+        types_count++;
+    }
+    m_Particles.push_back(Particle(n_x, n_y, convertId(n_type)));
+}
+
+void ParticleSystem::addInteraction(const int id1, const int id2, float value) {
+    m_Interactions[{convertId(id1), convertId(id2)}] = value;
+}
+
+int ParticleSystem::convertId(const int id) {
+    auto it = std::find(m_Types_id.begin(), m_Types_id.end(), id);
+    if (it != m_Types_id.end()) {
+        int index = it - m_Types_id.begin();
+        return index;
+    } else {
+        std::cout<<"Could not spawn"<<std::endl;
+        return -1;
+    }
 }
 
 int ParticleSystem::particleGridCoordinate(Particle& p) {
@@ -42,11 +75,8 @@ void ParticleSystem::calculateVelocityAndMove(Particle& p) {
     p.vy *= friction;
 
     if (p.x + 1 > x_screen_size && p.vx > 0) p.vx *= -1;
-
     if (p.x - 1 < 0 && p.vx < 0) p.vx *= -1;
-
     if (p.y + 1 > y_screen_size && p.vy > 0) p.vy *= -1;
-
     if (p.y - 1 < 0 && p.vy < 0) p.vy *= -1;
 
     p.x += p.vx;
@@ -60,7 +90,7 @@ float ParticleSystem::calculateFractialAcceleration(const Particle& p1, const Pa
     if (distance <= beta) {
         c = repell_constant * (distance / beta - 1) * interaction_constant * inv_distance;
     } else if (distance <= alpha) {
-        c = (1 - (std::fabs((2 * distance - alpha - beta)) / (alpha - beta))) * interaction_constant * inv_distance;
+        c = f_Interactions[p1.type_Id * types_count + p2.type_Id] * (1 - (std::fabs((2 * distance - alpha - beta)) / (alpha - beta))) * interaction_constant * inv_distance;
     }
     return c;
 }

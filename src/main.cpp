@@ -6,11 +6,15 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <cstddef>
 
 const char* vertexShaderSource = R"(
 #version 330 core
 
 layout(location = 0) in vec2 position;
+layout(location = 1) in int particleId;
+
+flat out int id;
 
 void main()
 {
@@ -18,26 +22,39 @@ void main()
     vec2 clipSpace = normalized * 2.0 - 1.0;
 
     gl_Position = vec4(clipSpace, 0.0, 1.0);
-
     gl_PointSize = 5.0;
+
+    id = int(particleId);
 }
 )";
 
 const char* fragmentShaderSource = R"(
 #version 330 core
 
+flat in int id;
+
 out vec4 FragColor;
 
 void main()
 {
     vec2 coord = gl_PointCoord - vec2(0.5);
-
     float distance = length(coord);
-    float edge = fwidth(distance);
 
+    float edge = fwidth(distance);
     float alpha = 1.0 - smoothstep(0.5 - edge, 0.5, distance);
 
-    FragColor = vec4(1.0, 1.0, 1.0, alpha);
+    vec3 color;
+
+    if (id == 0)
+        color = vec3(1.0, 0.0, 0.0); // red
+    else if (id == 1)
+        color = vec3(0.0, 1.0, 0.0); // green
+    else if (id == 2)
+        color = vec3(0.0, 0.0, 1.0); // blue
+    else
+        color = vec3(1.0);             // white
+
+    FragColor = vec4(color, alpha);
 }
 )";
 
@@ -68,12 +85,27 @@ int main() {
 
     ParticleSystem pSystem;
 
-    constexpr int PARTICLE_COUNT = 30;
+    constexpr int PARTICLE_COUNT = 10000;
 
-    for (int i = 0; i < PARTICLE_COUNT; ++i)
-    {
-        pSystem.spawn(400 + i, 200 + 2*i);
+    constexpr int SIDE = 100;
+    constexpr float START = 25.0f;
+    constexpr float SPACING = 7.5f;
+
+    for (int y = 0; y < SIDE; ++y) {
+        for (int x = 0; x < SIDE; ++x) {
+
+            float px = START + x * SPACING;
+            float py = START + y * SPACING;
+
+            pSystem.spawn(px, py, (x + y) % 2 + 1);
+        }
     }
+
+    pSystem.addInteraction(1, 2, -0.1);
+    pSystem.addInteraction(2, 1, 2);
+    pSystem.addInteraction(1, 1, 0.7);
+    pSystem.addInteraction(2, 2, 0);
+
     pSystem.postSpawnCleanup();
 
     GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
@@ -105,6 +137,16 @@ int main() {
         sizeof(Particle),   // distance between particles
         (void*)0            // position of x
     );
+
+    glVertexAttribIPointer(
+        1,
+        1,
+        GL_INT,
+        sizeof(Particle),
+        (void*)offsetof(Particle, type_Id)
+    );
+
+    glEnableVertexAttribArray(1);
 
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);

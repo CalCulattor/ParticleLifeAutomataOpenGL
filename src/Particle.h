@@ -9,5 +9,5 @@ class Particle {
     int grid_position;
 
     Particle() = default;
-    Particle(const float new_x, float new_y);
+    Particle(const float n_x, const float n_y, const int n_type);
 };

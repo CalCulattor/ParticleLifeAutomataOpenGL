@@ -1,7 +1,7 @@
 #include <vector>
 #include <array>
-#include <unordered_map>
 #include <algorithm>
+#include <map>
 
 #include "Particle.h"
 
@@ -14,20 +14,30 @@ class ParticleSystem{
     static constexpr int grid_number = ((x_screen_size + grid_size - 1) / grid_size) * ((y_screen_size + grid_size - 1) / grid_size);
     static const int grid_x = (x_screen_size + grid_size - 1) / grid_size;
     static const int grid_y = (y_screen_size + grid_size - 1) / grid_size;
-    const float friction = 0.9;
-    const float beta = 20;
-    const float alpha = 40;
-    const float repell_constant = 3;
-    const float interaction_constant = 0.09;
+    int types_count = 0;
+    const float friction = 0.8;
+    const float beta = 8;
+    const float alpha = 18;
+    const float repell_constant = 5;
+    const float interaction_constant = 0.1;
     std::vector<Particle> m_Particles = {};
     std::array<std::vector<Particle*>, grid_number>* grid = nullptr;
+    std::vector<int> m_Types_id = {};
+    std::map<std::pair<int, int>, float> m_Interactions = {};
+    float* f_Interactions = nullptr;
     int particle_count = 0;
 
-    ~ParticleSystem();
+    ParticleSystem();
 
+    ~ParticleSystem();
+    
     void postSpawnCleanup();
 
-    void spawn(const float new_x, const float new_y);
+    void spawn(const float new_x, const float new_y, const int n_type);
+
+    void addInteraction(const int id1, const int id2, float value);
+
+    int convertId(const int id);
 
     static int particleGridCoordinate(Particle& p);
 
